@@ -1,0 +1,630 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RR Tour & Travels</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0d0d0d;color:white;font-family:Arial}
+header{background:#151515;padding:18px 5%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c7a354}
+.logo{color:#dfbd70;font-size:22px;font-weight:bold}
+button{background:#d5b15e;color:#111;border:0;padding:12px 18px;border-radius:5px;cursor:pointer;font-weight:bold;margin:4px}
+button:hover{background:#f0d58c}
+.danger{background:#b52c2c;color:white}
+.secondary{background:#444;color:white}
+.hero{text-align:center;padding:65px 15px;background:linear-gradient(120deg,#171717,#352a16)}
+.hero h1{font-size:38px;color:#dfbd70}
+section{padding:30px 5%}
+h2{color:#dfbd70}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+.card,.panel,.order{background:#1c1c1c;border:1px solid #51442c;padding:17px;border-radius:9px;margin:12px 0}
+.card img{width:100%;height:170px;object-fit:cover;border-radius:5px}
+.card h3{color:#e0bd70}
+input,select,textarea{width:100%;padding:12px;margin:7px 0 14px;background:#292929;color:white;border:1px solid #555;border-radius:5px}
+label{font-size:13px;color:#ddd}
+.hidden{display:none!important}
+footer{text-align:center;background:#151515;padding:25px;color:#bbb}
+a{color:#dfbd70}
+.status{color:#e0bd70}
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">RR TOUR & TRAVELS</div>
+<div>
+<button onclick="showHome()">Home</button>
+<button onclick="showLogin()">Admin Login</button>
+</div>
+</header>
+
+<div id="homePage">
+<div class="hero">
+<h1>Your Journey, Our Responsibility</h1>
+<p>Premium Travel Services | Indore | All India</p>
+<button onclick="document.getElementById('vehicles').scrollIntoView()">Explore Vehicles</button>
+</div>
+
+<section id="vehicles">
+<h2>Our Vehicles</h2>
+<div id="vehicleList" class="grid">Loading vehicles...</div>
+</section>
+
+<section id="bookingSection" class="hidden">
+<h2>Book Your Vehicle</h2>
+<div class="panel">
+<form id="bookingForm">
+<label>Name</label><input id="customerName" required maxlength="80">
+<label>Mobile Number</label><input id="customerPhone" required pattern="[0-9]{10}" maxlength="10">
+<label>Vehicle</label><input id="selectedVehicle" readonly>
+<input id="selectedVehicleId" type="hidden">
+<label>Pickup</label><input id="pickup" required maxlength="150">
+<label>Destination</label><input id="destination" required maxlength="150">
+<label>Trip Type</label>
+<select id="tripType" required>
+<option value="Single Trip">Single Trip (One Way)</option>
+<option value="Round Trip">Round Trip (To &amp; Fro)</option>
+</select>
+<label>Journey Date</label><input id="journeyDate" type="date" required>
+<label>Journey Time</label><input id="journeyTime" type="time" required>
+<label>Additional Details</label><textarea id="details" maxlength="500"></textarea>
+<button type="submit">Place Booking</button>
+</form>
+</div>
+</section>
+
+<section>
+<h2>Contact Us</h2>
+<div class="panel">
+<p>Indore, Madhya Pradesh | All India</p>
+<p>9685553231 / 8109358736</p>
+<a href="https://wa.me/919685553231">WhatsApp Us</a>
+</div>
+</section>
+</div>
+
+<div id="loginPage" class="hidden">
+<section>
+<h2>Admin Login</h2>
+<div class="panel">
+<form id="loginForm">
+<label>Email</label><input id="adminEmail" type="email" required>
+<label>Password</label><input id="adminPassword" type="password" required>
+<button type="submit">Login</button>
+</form>
+<p id="loginMessage"></p>
+</div>
+</section>
+</div>
+
+<div id="adminPage" class="hidden">
+<section>
+<h2>RR Admin Dashboard</h2>
+<div class="panel">
+<button onclick="showAddVehicle()">Add Vehicle</button>
+<button onclick="loadOrders()">Refresh Orders</button>
+<button onclick="enableNotifications()">Enable Sound &amp; Notifications</button>
+<button class="secondary" onclick="logout()">Logout</button>
+<p id="notificationMessage" role="status"></p>
+</div>
+
+<h2>Manage Vehicles</h2>
+<div id="adminVehicleList"></div>
+
+<div id="vehicleFormPanel" class="panel hidden">
+<h2 id="formHeading">Add Vehicle</h2>
+<form id="vehicleForm">
+<input id="vehicleId" type="hidden">
+<label>Vehicle Name</label><input id="vehicleName" required>
+<label>Vehicle Type</label><input id="vehicleType" required>
+<label>Seats</label><input id="vehicleSeats" type="number" min="1" required>
+<label>AC</label>
+<select id="vehicleAC"><option>Yes</option><option>No</option></select>
+<label>Rate Per KM</label><input id="ratePerKm" type="number" min="0" required>
+<label>Rate Per Day</label><input id="ratePerDay" type="number" min="0" required>
+<label>Photo URL</label><input id="photoUrl" type="url" required>
+<label>Details</label><textarea id="vehicleDetails"></textarea>
+<label>Available</label>
+<select id="vehicleActive"><option value="true">Yes</option><option value="false">No</option></select>
+<button type="submit">Save Vehicle</button>
+<button type="button" class="secondary" onclick="hideVehicleForm()">Cancel</button>
+</form>
+</div>
+
+<h2>Customer Orders</h2>
+<div id="ordersList">Loading...</div>
+</section>
+</div>
+
+<footer>© 2026 RR Tour & Travels</footer>
+
+<script type="module">
+
+import {initializeApp}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+getFirestore,collection,addDoc,getDocs,doc,
+updateDoc,deleteDoc,getDoc,serverTimestamp,query,orderBy,onSnapshot
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* YOUR FIREBASE CONFIGURATION */
+
+const firebaseConfig = {
+apiKey: "AIzaSyClkF53wo9EGCP9-nom8EgGAZPn3Kfvx_Q",
+authDomain: "rr-tour-travels-website-58b36.firebaseapp.com",
+projectId: "rr-tour-travels-website-58b36",
+storageBucket: "rr-tour-travels-website-58b36.firebasestorage.app",
+messagingSenderId: "429268926133",
+appId: "1:429268926133:web:5935e716ccf4a0813b48fc",
+measurementId: "G-DJEVYH5E8D"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+let currentUser=null;
+let vehicles=[];
+let unsubscribeOrders=null;
+let audioContext=null;
+let ordersInitialized=false;
+
+const $=id=>document.getElementById(id);
+
+function esc(s=""){
+return String(s).replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+})[c]);
+}
+
+function setPage(page){
+["homePage","loginPage","adminPage"].forEach(id=>{
+$(id).classList.toggle("hidden",id!==page);
+});
+}
+
+window.showHome=()=>setPage("homePage");
+window.showLogin=()=>setPage("loginPage");
+
+async function verifyAdmin(user){
+const snap=await getDoc(doc(db,"admins",user.uid));
+return snap.exists() &&
+snap.data().role==="admin" &&
+snap.data().active===true;
+}
+
+let authCheckRunning = false;
+
+onAuthStateChanged(auth, async user => {
+
+    currentUser = user;
+
+    if (!user) {
+        if (unsubscribeOrders) {
+            unsubscribeOrders();
+            unsubscribeOrders = null;
+        }
+
+        ordersInitialized = false;
+        setPage("homePage");
+        return;
+    }
+
+    if (authCheckRunning) return;
+    authCheckRunning = true;
+
+    setPage("loginPage");
+    $("loginMessage").textContent = "Signed in. Checking admin permissions...";
+
+    try {
+        const isAdmin = await verifyAdmin(user);
+
+        if (!isAdmin) {
+            await signOut(auth);
+            setPage("loginPage");
+            $("loginMessage").textContent =
+                "Admin permission nahi mili.";
+            return;
+        }
+
+        setPage("adminPage");
+        $("ordersList").textContent = "Loading orders...";
+        $("adminVehicleList").textContent = "Loading vehicles...";
+
+        // Load data in parallel
+        startLiveOrders();
+
+        Promise.all([
+            loadAdminVehicles(),
+            loadVehicles()
+        ]).catch(error => {
+            console.error("Dashboard loading:", error);
+        });
+
+    } catch (error) {
+        setPage("loginPage");
+        $("loginMessage").textContent =
+            "Login error: " + error.message;
+    } finally {
+        authCheckRunning = false;
+    }
+
+});
+
+$("loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const button = e.submitter;
+    button.disabled = true;
+    button.textContent = "Please wait...";
+
+    $("loginMessage").textContent = "Verifying account...";
+
+    try {
+        await signInWithEmailAndPassword(
+            auth,
+            $("adminEmail").value.trim(),
+            $("adminPassword").value
+        );
+
+    } catch(error) {
+        $("loginMessage").textContent = error.message;
+    } finally {
+        button.disabled = false;
+        button.textContent = "Login";
+    }
+});
+
+window.logout=async()=>{
+if(unsubscribeOrders){
+unsubscribeOrders();
+unsubscribeOrders=null;
+}
+await signOut(auth);
+};
+
+function playBookingSound(){
+try{
+if(!audioContext){
+const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+if(!AudioContextClass)return;
+audioContext=new AudioContextClass();
+}
+
+if(audioContext.state==="suspended")audioContext.resume();
+
+const oscillator=audioContext.createOscillator();
+const gain=audioContext.createGain();
+oscillator.connect(gain);
+gain.connect(audioContext.destination);
+oscillator.frequency.value=880;
+oscillator.type="sine";
+gain.gain.setValueAtTime(0.5,audioContext.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+1);
+oscillator.start();
+oscillator.stop(audioContext.currentTime+1);
+}catch(error){
+console.log("Sound error:",error);
+}
+}
+
+function startLiveOrders(){
+if(unsubscribeOrders)unsubscribeOrders();
+ordersInitialized=false;
+
+const q=query(collection(db,"orders"),orderBy("createdAt","desc"));
+unsubscribeOrders=onSnapshot(q,async snapshot=>{
+if(!ordersInitialized){
+ordersInitialized=true;
+await loadOrders();
+return;
+}
+
+const newOrders=snapshot.docChanges().filter(change=>change.type==="added");
+if(!newOrders.length)return;
+
+newOrders.forEach(change=>{
+const order=change.doc.data();
+playBookingSound();
+
+if("Notification" in window && Notification.permission==="granted"){
+new Notification("New RR Tour Booking!",{
+body:`${order.customerName||"Customer"} | ${order.tripType||"Single Trip"} | ${order.pickup||""} to ${order.destination||""}`
+});
+}
+});
+
+await loadOrders();
+},error=>{
+$("notificationMessage").textContent="Live notification error: "+error.message;
+unsubscribeOrders=null;
+});
+}
+
+window.enableNotifications=async()=>{
+const message=$("notificationMessage");
+
+try{
+if("Notification" in window){
+const permission=await Notification.requestPermission();
+message.textContent=permission==="granted"
+?"Browser notifications enabled."
+:"Notification permission not granted; sound alerts can still work.";
+}else{
+message.textContent="Browser notifications are not supported; sound alerts can still work.";
+}
+
+const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+if(AudioContextClass){
+if(!audioContext)audioContext=new AudioContextClass();
+if(audioContext.state==="suspended")await audioContext.resume();
+playBookingSound();
+}
+
+startLiveOrders();
+message.textContent+=" Live booking sound alerts are enabled.";
+}catch(error){
+message.textContent="Could not enable notifications: "+error.message;
+}
+};
+
+/* CUSTOMER VEHICLES */
+
+async function loadVehicles(){
+try{
+const snap=await getDocs(collection(db,"vehicles"));
+vehicles=snap.docs.map(d=>({id:d.id,...d.data()}))
+.filter(v=>v.active===true);
+
+const list=$("vehicleList");
+
+if(!vehicles.length){
+list.textContent="No vehicles available currently.";
+return;
+}
+
+list.innerHTML=vehicles.map(v=>`
+<div class="card">
+<img src="${esc(v.photoUrl||"https://placehold.co/600x300?text=Vehicle")}" alt="Vehicle">
+<h3>${esc(v.name)}</h3>
+<p>${esc(v.type)} | ${esc(v.seats)} Seats</p>
+<p>AC: ${esc(v.ac)}</p>
+<p>₹${esc(v.ratePerKm)} / KM</p>
+<p>₹${esc(v.ratePerDay)} / Day</p>
+<p>${esc(v.details||"")}</p>
+<button onclick="bookVehicle('${esc(v.id)}')">Book Now</button>
+</div>`).join("");
+
+}catch(e){
+$("vehicleList").textContent="Error: "+e.message;
+}
+}
+
+window.bookVehicle=id=>{
+const v=vehicles.find(x=>x.id===id);
+if(!v)return;
+$("selectedVehicle").value=v.name;
+$("selectedVehicleId").value=id;
+$("bookingSection").classList.remove("hidden");
+$("bookingSection").scrollIntoView({behavior:"smooth"});
+};
+
+/* CUSTOMER BOOKING */
+
+$("journeyDate").min=new Date().toISOString().slice(0,10);
+
+$("bookingForm").addEventListener("submit",async e=>{
+e.preventDefault();
+
+const phone=$("customerPhone").value.trim();
+if(!/^[0-9]{10}$/.test(phone)){
+alert("Enter valid 10 digit mobile number");
+return;
+}
+
+try{
+const vehicleId=$("selectedVehicleId").value;
+const vehicle=vehicles.find(v=>v.id===vehicleId);
+
+if(!vehicle || vehicle.active!==true){
+alert("This vehicle is no longer available.");
+return;
+}
+
+await addDoc(collection(db,"orders"),{
+customerName:$("customerName").value.trim(),
+customerPhone:phone,
+vehicleId,
+vehicleName:vehicle.name,
+pickup:$("pickup").value.trim(),
+destination:$("destination").value.trim(),
+tripType:$("tripType").value,
+journeyDate:$("journeyDate").value,
+journeyTime:$("journeyTime").value,
+details:$("details").value.trim(),
+status:"Pending",
+createdAt:serverTimestamp()
+});
+
+alert("Booking request submitted successfully!");
+$("bookingForm").reset();
+$("bookingSection").classList.add("hidden");
+
+}catch(e){
+alert("Booking error: "+e.message);
+}
+});
+
+/* VEHICLE ADMIN */
+
+window.showAddVehicle=()=>{
+$("vehicleForm").reset();
+$("vehicleId").value="";
+$("formHeading").textContent="Add New Vehicle";
+$("vehicleFormPanel").classList.remove("hidden");
+};
+
+window.hideVehicleForm=()=>{
+$("vehicleFormPanel").classList.add("hidden");
+};
+
+async function loadAdminVehicles(){
+if(!currentUser)return;
+const snap=await getDocs(collection(db,"vehicles"));
+const list=$("adminVehicleList");
+list.innerHTML="";
+
+snap.forEach(item=>{
+const v=item.data();
+const div=document.createElement("div");
+div.className="order";
+div.innerHTML=`
+<h3>${esc(v.name)}</h3>
+<p>₹${esc(v.ratePerKm)} / KM</p>
+<button class="edit">Edit</button>
+<button class="delete danger">Delete</button>`;
+
+div.querySelector(".edit").onclick=()=>{
+$("vehicleId").value=item.id;
+$("vehicleName").value=v.name||"";
+$("vehicleType").value=v.type||"";
+$("vehicleSeats").value=v.seats||"";
+$("vehicleAC").value=v.ac||"Yes";
+$("ratePerKm").value=v.ratePerKm||0;
+$("ratePerDay").value=v.ratePerDay||0;
+$("photoUrl").value=v.photoUrl||"";
+$("vehicleDetails").value=v.details||"";
+$("vehicleActive").value=String(v.active);
+$("formHeading").textContent="Edit Vehicle";
+$("vehicleFormPanel").classList.remove("hidden");
+};
+
+div.querySelector(".delete").onclick=async()=>{
+if(confirm("Delete vehicle?")){
+await deleteDoc(doc(db,"vehicles",item.id));
+await loadAdminVehicles();
+await loadVehicles();
+}
+};
+list.appendChild(div);
+});
+}
+
+$("vehicleForm").addEventListener("submit",async e=>{
+e.preventDefault();
+
+try{
+const data={
+name:$("vehicleName").value.trim(),
+type:$("vehicleType").value.trim(),
+seats:Number($("vehicleSeats").value),
+ac:$("vehicleAC").value,
+ratePerKm:Number($("ratePerKm").value),
+ratePerDay:Number($("ratePerDay").value),
+photoUrl:$("photoUrl").value.trim(),
+details:$("vehicleDetails").value.trim(),
+active:$("vehicleActive").value==="true"
+};
+
+const id=$("vehicleId").value;
+
+if(id){
+await updateDoc(doc(db,"vehicles",id),data);
+alert("Vehicle updated!");
+}else{
+await addDoc(collection(db,"vehicles"),{
+...data,createdAt:serverTimestamp()
+});
+alert("Vehicle added!");
+}
+
+hideVehicleForm();
+await loadAdminVehicles();
+await loadVehicles();
+
+}catch(e){
+alert("Vehicle save error: "+e.message);
+}
+});
+
+/* ADMIN ORDERS */
+
+window.loadOrders=async()=>{
+if(!currentUser)return;
+
+try{
+const snap=await getDocs(query(
+collection(db,"orders"),orderBy("createdAt","desc")
+));
+
+const list=$("ordersList");
+list.innerHTML="";
+
+if(snap.empty){
+list.textContent="No orders yet.";
+return;
+}
+
+snap.forEach(item=>{
+const o=item.data();
+const date=o.createdAt?.toDate?.().toLocaleString("en-IN")||"Pending";
+
+const div=document.createElement("div");
+div.className="order";
+
+div.innerHTML=`
+<h3>${esc(o.customerName)}</h3>
+<p>Phone: ${esc(o.customerPhone)}</p>
+<p>Vehicle: ${esc(o.vehicleName)}</p>
+<p>Trip Type: ${esc(o.tripType||"Single Trip")}</p>
+<p>Route: ${esc(o.pickup)} → ${esc(o.destination)}</p>
+<p>Journey: ${esc(o.journeyDate)} ${esc(o.journeyTime)}</p>
+<p>Order Date: ${esc(date)}</p>
+<p>Status: ${esc(o.status)}</p>
+<select class="status">
+<option>Pending</option>
+<option>Confirmed</option>
+<option>Completed</option>
+<option>Cancelled</option>
+</select>
+<button class="update">Update Status</button>
+<a target="_blank" href="https://wa.me/91${esc(o.customerPhone)}">WhatsApp</a>`;
+
+const select=div.querySelector(".status");
+select.value=o.status||"Pending";
+
+div.querySelector(".update").onclick=async()=>{
+try{
+await updateDoc(doc(db,"orders",item.id),{
+status:select.value
+});
+alert("Status updated");
+await loadOrders();
+}catch(e){
+alert(e.message);
+}
+};
+
+list.appendChild(div);
+});
+
+}catch(e){
+$("ordersList").textContent="Order error: "+e.message;
+}
+};
+
+loadVehicles();
+
+</script>
+</body>
+  </html>
+  
